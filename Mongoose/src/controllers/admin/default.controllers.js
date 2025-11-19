@@ -52,13 +52,24 @@ exports.view = async(request,response) => {
       }
     }
 
-    var total_records = await defaultModel.find({
-    deleted_at : null
-  }).countDocuments();
+    // var nameRegex = new RegExp(request.body.name,"i")
 
-  await defaultModel.find({
-    deleted_at : null
-  }).limit(limit).skip(skip).sort({
+    var filter = {
+      deleted_at : null,
+      // name : nameRegex,
+      // order : {
+      //   $gt : 2
+      // },
+      status : {
+        $type : 8
+      },
+    }
+
+    var total_records = await defaultModel.find(filter).countDocuments();
+
+  await defaultModel.find(filter).limit(limit).skip(skip)
+  .select('name status order')
+  .sort({
     order : 'asc',
     _id : 'desc'
   })
