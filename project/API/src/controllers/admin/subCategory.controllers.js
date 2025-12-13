@@ -1,0 +1,365 @@
+const categoryModel = require("../../models/category")
+const subCategoryModel = require("../../models/subCategory")
+var slugify = require('slugify')
+
+const generateUniqueSlug = async (Model, baseSlug) => {
+  let slug = baseSlug;
+  let count = 0;
+
+  // Loop to find unique slug
+  while (await Model.findOne({ slug })) {
+    count++;
+    slug = `${baseSlug}-${count}`;
+  }
+
+  return slug;
+};
+
+exports.viewCategories = async(request, response) => {
+
+    const andCondition = [
+        {
+            deleted_at : null, 
+        }
+    ];
+
+    const orCondition = [{
+        status : 1
+    }];
+
+    if(andCondition.length > 0){
+        var filter = { $and : andCondition }
+    } else {
+        var filter = {}
+    }
+
+    if(orCondition.length > 0){
+        filter.$or = orCondition;
+    }
+
+    await categoryModel.find(filter)
+    .select('name')
+    .sort({
+        _id : 'desc'
+    })
+    .then((result) => {
+        if(result.length > 0){
+            const data = {
+                _status : true,
+                _message : 'Record found successfully.',
+                _data : result
+            }
+
+            response.send(data);
+        } else {
+            const data = {
+                _status : false,
+                _message : 'No Record found.',
+                _data : result
+            }
+
+            response.send(data);
+        }
+    })
+    .catch((error) => {
+        const data = {
+            _status : false,
+            _message : 'Something went wrong',
+            _error : error,
+            _data : []
+        }
+
+        response.send(data);
+    })
+}
+
+exports.create = async (request,response) => {
+
+    const saveData = request.body
+
+    if(request.file){
+      saveData.image = request.file.filename
+    }
+
+     if(request.body != undefined){
+        if(request.body.name != undefined || request.body.name != ''){
+            var slug = slugify(request.body.name, {
+                lower : true,
+                strict : true
+            })
+
+            saveData.slug = await generateUniqueSlug(subCategoryModel, slug);
+        }
+    }
+
+
+    await subCategoryModel(saveData).save()
+    .then((result) => {
+        const data = {
+        _status : true,
+        _message : 'Record Found sucessfully !!',
+        _data : result
+      }
+    response.send(data)
+    })
+    .catch((error) => {
+
+      var errorMessages = {};
+
+      for( var i in error.errors){
+        errorMessages[i] = error.errors[i].message;
+      }
+
+
+        const data = {
+        _status : false,
+        _message : 'something went wrong !!',
+        _error : errorMessages,
+        _data : null
+      }
+    response.send(data)
+    })
+}
+exports.view = async(request,response) => {
+
+  var page = 1;
+  var limit = 15;
+  var skip = 0;
+
+    if(request.body){
+      if(request.body.limit){
+        limit = request.body.limit;
+      }
+
+      if(request.body.page){
+        page = request.body.page;
+        skip = (page - 1) * limit;
+      }
+    }
+
+   const andCondition = [
+        {
+            deleted_at : null, 
+            // status : 1   // when create api for website
+        }
+    ];
+
+    const orCondition = [];
+
+    if(request.body){
+      if(request.body.name != undefined){
+            if(request.body.name != ''){
+               name = new RegExp(request.body.name,"i")
+                andCondition.push({ name : name })
+            }
+        }
+        if(request.body.parent_category_id != undefined){
+            if(request.body.parent_category_id != ''){
+                andCondition.push({ parent_category_id : request.body.parent_category_id })
+            }
+        }
+    }
+
+    if(andCondition.length > 0){
+        var filter = { $and : andCondition }
+    } else {
+        var filter = {}
+    }
+
+    if(orCondition.length > 0){
+        filter.$or = orCondition;
+    }
+
+
+    var total_records = await subCategoryModel.find(filter).countDocuments();
+
+  await subCategoryModel.find(filter).limit(limit).skip(skip)
+  .select('name parent_category_id image slug status order')
+  .populate('parent_category_id','name')
+  .sort({
+    // order : 'asc', In case of website
+    _id : 'desc'
+  })
+  .then((result) => {
+      if(result.length > 0){
+      const data = {
+        _status : true,
+        _message : 'Record Found sucessfully !!',
+        _image_path : process.env.category_image,
+        paginate : {
+          total_records : total_records,
+          current_page : page,
+          total_pages : Math.ceil(total_records/limit)
+        },
+        _data : result
+      }
+    response.send(data)
+      }else {
+      const data = {
+        _status : false,
+        _message : 'No Record Found !!',
+        _data : result
+      }
+    response.send(data)
+      }
+  })
+   .catch(() => {
+       const data = {
+        _status : false,
+        _message : 'something went wrong !!',
+        _data : result
+      }
+    response.send(data)
+  })
+ 
+
+}
+exports.details = async (request,response) => {
+
+  await subCategoryModel.findOne({
+    _id : request.params.id,
+    deleted_at : null
+  })
+  .then((result) => {
+      if(result){
+      const data = {
+        _status : true,
+        _message : 'Record Found sucessfully !!',
+        _image_path : process.env.category_image,
+        _data : result
+      }
+    response.send(data)
+      }else {
+      const data = {
+        _status : false,
+        _message : 'No Record Found !!',
+        _data : result
+      }
+    response.send(data)
+      }
+  })
+   .catch(() => {
+       const data = {
+        _status : false,
+        _message : 'something went wrong !!',
+        _data : result
+      }
+    response.send(data)
+  })
+}
+exports.update = async (request,response) => {
+  const saveData = request.body
+
+      if(request.file){
+      saveData.image = request.file.filename
+    }
+
+   var slug = slugify(request.body.name, {
+        lower : true,
+        strict : true
+    })
+
+    saveData.slug = await generateUniqueSlug(subCategoryModel, slug);
+
+    await subCategoryModel.updateOne({
+      _id : request.params.id
+    },{
+      $set : saveData
+    })
+    .then((result) => {
+        const data = {
+        _status : true,
+        _message : 'Record update sucessfully !!',
+        _data : result
+      }
+    response.send(data)
+    })
+    .catch((error) => {
+
+      var errorMessages = {};
+
+      for( var i in error.errors){
+        errorMessages[i] = error.errors[i].message;
+      }
+
+
+        const data = {
+        _status : false,
+        _message : 'something went wrong !!',
+        _error : errorMessages,
+        _data : null
+      }
+    response.send(data)
+    })
+}
+exports.changeStatus = async (request,response) => {
+     await subCategoryModel.updateMany({
+      _id : request.body.ids
+    },[{
+      $set : {
+         status : {
+          $not : "$status"
+            }
+      }
+    }])
+    .then((result) => {
+        const data = {
+        _status : true,
+        _message : 'Change status sucessfully !!',
+        _data : result
+      }
+    response.send(data)
+    })
+    .catch((error) => {
+
+      var errorMessages = {};
+
+      for( var i in error.errors){
+        errorMessages[i] = error.errors[i].message;
+      }
+
+
+        const data = {
+        _status : false,
+        _message : 'something went wrong !!',
+        _error : errorMessages,
+        _data : null
+      }
+    response.send(data)
+    })
+        
+}
+exports.destroy = async (request,response) => {
+     await subCategoryModel.updateMany({
+      _id : request.body.ids
+    },{
+      $set : {
+        deleted_at : Date.now()
+      }
+    })
+    .then((result) => {
+        const data = {
+        _status : true,
+        _message : 'Record delete sucessfully !!',
+        _data : result
+      }
+    response.send(data)
+    })
+    .catch((error) => {
+
+      var errorMessages = {};
+
+      for( var i in error.errors){
+        errorMessages[i] = error.errors[i].message;
+      }
+
+
+        const data = {
+        _status : false,
+        _message : 'something went wrong !!',
+        _error : errorMessages,
+        _data : null
+      }
+    response.send(data)
+    })
+}
