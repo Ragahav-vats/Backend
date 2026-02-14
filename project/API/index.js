@@ -37,7 +37,11 @@ require('./src/routes/admin/subSubCategory.routes')(server);
 // Application URL
 
 
-// Website URL
+//Website URL
+require('./src/routes/website/user.routes')(server);
+require('./src/routes/website/order.routes')(server);
+
+
 
 server.listen(process.env.PORT, () => {
     mongoose.connect(`${process.env.mongoDb}`)
