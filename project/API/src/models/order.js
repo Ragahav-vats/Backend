@@ -67,15 +67,15 @@ const orderSchema = new mongoose.Schema({
   email: {
     type : String,
     default : '',
-    // required : [true,'Email is required'],
+    required : [true,'Email is required'],
     match: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,4}$/,
-//     validate: {
-//     validator: async function(v) {
-//     const user = await this.constructor.findOne({ email: v, deleted_at : null, role_type: 'user' });
-//         return !user;
-//       },
-//       message: props => `The specified Email is already in use.`
-// }
+    validate: {
+    validator: async function(v) {
+    const user = await this.constructor.findOne({ email: v, deleted_at : null, role_type: 'user' });
+        return !user;
+      },
+      message: props => `The specified Email is already in use.`
+}
   },
   mobile_number : {
     type : Number,
@@ -83,7 +83,7 @@ const orderSchema = new mongoose.Schema({
   },
   password : {
     type : String,
-    // required :  [true,'password is required'],
+    required :  [true,'password is required'],
     default : ''
   },
   address : {

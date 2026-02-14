@@ -96,7 +96,7 @@ exports.changeStatus = async(request, response) => {
 
     var checkPayment = await instance.payments.fetch(request.body.razorpay_payment_id);
     
-     dataSave.payment_id = request.body.razorpay_order_id;
+     dataSave.payment_id = request.body.razorpay_payment_id;
 
     if(checkPayment.status == 'authorized'){
         if(checkPayment.order_id != request.body.razorpay_order_id){
